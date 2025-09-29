@@ -74,7 +74,6 @@ def require_roles(*allowed_roles):
 
 # ---- USERS ----
 
-
 @api.route('/user', methods=['POST'])
 def sign_up():
 
@@ -99,9 +98,30 @@ def sign_up():
         return "recieved", 200
     else:
         return "Error, user could not be created", 500
+    
+@api.route("/users", methods=["POST"])
+def create_user():
+    data = request.get_json() or {}
+    required = ("first","last","email","role")
+    if not all(data.get(k) for k in required):
+        return jsonify({"msg":"Missing required fields"}), 400
+
+    if User.query.filter_by(email=data["email"].strip().lower()).first():
+        return jsonify({"msg":"Email already exists"}), 409
+
+    u = User(
+        fname=data["first"].strip(),
+        lname=data["last"].strip(),
+        email=data["email"].strip().lower(),
+        phone=(data.get("phone") or "").strip(),
+        role=data["role"],
+        password="!"  # or generate/handle properly
+    )
+    db.session.add(u)
+    db.session.commit()
+    return jsonify(u.serialize()), 201
 
 # ---- STAFF ----
-
 
 @api.route('/staff', methods=['GET'])
 def get_staff():

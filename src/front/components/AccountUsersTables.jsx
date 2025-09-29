@@ -30,6 +30,7 @@ export const UserTable = ({ props, refresh }) => {
 
     return (
         <tbody>
+            
             <tr>
                 <th scope="row">{props.id}</th>
                 <td>{props.first}</td>
