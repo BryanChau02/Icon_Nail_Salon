@@ -3,6 +3,7 @@ import { Check, MessageSquare } from "lucide-react";
 import { Link } from "react-router-dom";
 import ServiceCard from "../components/ServiceCard.jsx";
 import { SERVICES_BY_CATEGORY } from "../auth/servicesData.js";
+import { useAuth } from "../context/AuthContext";
 
 /* ----------------- API base (Vite or CRA) -----------------*/
 const API_BASE =
@@ -22,11 +23,14 @@ function combineLocalDateTime(yyyy_mm_dd, hhmm) {
   return new Date(yyyy, mm - 1, dd, H, M, 0, 0);
 }
 
-function toNaiveLocalISO(d) {
-  const pad = (n) => String(n).padStart(2, "0");
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(
-    d.getHours()
-  )}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+function buildStartsAtUTC(yyyy_mm_dd, hhmm) {
+  const [H, M] = (hhmm || "00:00").split(":").map(Number);
+  const [y, m, d] = (yyyy_mm_dd || "").split("-").map(Number);
+  // This Date(...) is created in the browser's LOCAL time
+  const localDt = new Date(y, (m || 1) - 1, d || 1, H || 0, M || 0, 0, 0);
+  // toISOString() converts that local time TO UTC (trailing Z)
+  const iso = localDt.toISOString();                 // e.g., "2025-09-30T13:00:00.000Z"
+  return iso.slice(0, 19) + "Z";                     // strip ms
 }
 
 function hhmmTo12(hhmm) {
@@ -37,7 +41,7 @@ function hhmmTo12(hhmm) {
 }
 
 // Generate time slots
-function makeSlots(open = "09:00", close = "18:30", stepMin = 30) {
+function makeSlots(open = "09:00", close = "18:30", stepMin = 15) {
   const toMin = (s) => {
     const [h, m] = s.split(":").map(Number);
     return h * 60 + m;
@@ -99,16 +103,25 @@ async function fetchJSON(url, opts) {
   }
 }
 
-function normalizeDay(raw, yyyy_mm_dd) {
-  return (Array.isArray(raw) ? raw : []).map((b) => ({
-    start: new Date(
-      b.start ||
-        b.starts_at ||
-        b.startISO ||
-        `${yyyy_mm_dd}T${b.time || "00:00:00"}`
-    ),
-    duration: Number(b.duration ?? b.duration_min ?? b.minutes ?? 0),
-  }));
+function parseBackendUtc(s) {
+  if (!s) return null;
+  if (/Z$|[+-]\d{2}:\d{2}$/.test(s)) return new Date(s);
+  return new Date(s + "Z");
+}
+
+function normalizeDay(raw) {
+  return (Array.isArray(raw) ? raw : []).map((b) => {
+    const start = parseBackendUtc(b.starts_at);
+    const startMin = start.getHours() * 60 + start.getMinutes();
+    return {
+      start,
+      startMin,
+      endMin: startMin + Number(b.duration_min ?? b.duration ?? 0),
+      duration: Number(b.duration_min ?? b.duration ?? 0),
+      staff_id: b.staff_id,
+      customer_id: b.customer_id,
+    };
+  });
 }
 
 export default function CustomerBooking() {
@@ -123,9 +136,11 @@ export default function CustomerBooking() {
   const [selectedDate, setSelectedDate] = useState("");
   const [selectedTime, setSelectedTime] = useState("");
   const [dayBookings, setDayBookings] = useState([]); // [{start, duration}]
-  const slots = useMemo(() => makeSlots("09:00", "18:30", 30), []);
+  const slots = useMemo(() => makeSlots("09:00", "18:30", 15), []);
 
   /* --------- customer / payment --------- */
+  const { loggedIn, user, uid } = useAuth();
+
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [profileLoading, setProfileLoading] = useState(false);
   const [profileError, setProfileError] = useState("");
@@ -184,68 +199,20 @@ export default function CustomerBooking() {
 
   /* --------- Load auth profile (prefill) --------- */
   useEffect(() => {
-    const token =
-      localStorage.getItem("token") ||
-      localStorage.getItem("access_token") ||
-      localStorage.getItem("jwt");
-    const userId =
-      localStorage.getItem("user_id") ||
-      localStorage.getItem("id") ||
-      localStorage.getItem("userId");
-
-    if (!token && !userId) return;
-
-    let cancelled = false;
-    setProfileLoading(true);
-
-    (async () => {
-      const headers = token ? { Authorization: `Bearer ${token}` } : {};
-      const urls = [
-        userId ? `${API_ROOT}/api/me/${userId}` : null,
-        `${API_ROOT}/api/me`,
-      ].filter(Boolean);
-
-      for (const u of urls) {
-        try {
-          const { ok, data } = await fetchJSON(u, { headers });
-          if (!ok || !data) continue;
-          const first = data.first || data.fname || "";
-          const last = data.last || data.lname || "";
-          const email = data.email || "";
-          const phone = data.phone || "";
-          if (cancelled) return;
-
-          if (first || last || email || phone) {
-            setIsLoggedIn(true);
-            setCustomerInfo((p) => ({
-              ...p,
-              firstName: first,
-              lastName: last,
-              email,
-              phone,
-            }));
-            setProfileError("");
-            setProfileLoading(false);
-            return;
-          }
-        } catch {
-          // try next url
-        }
-      }
-
-      if (!cancelled) {
-        setIsLoggedIn(false);
-        setProfileError(
-          "Could not load your profile. You may need to sign in again."
-        );
-        setProfileLoading(false);
-      }
-    })();
-
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+  if (loggedIn && user) {
+    setCustomerInfo({
+      firstName: user.first ?? user.fname ?? "",
+      lastName:  user.last  ?? user.lname ?? "",
+      email:     user.email ?? "",
+      phone:     user.phone ?? "",
+      notes:     "",
+    });
+    setProfileError("");
+    setProfileLoading(false);
+  } else {
+    setProfileLoading(false);
+  }
+}, [loggedIn, user]);
 
   /* --------- Load appointments for selected staff & date --------- */
   useEffect(() => {
@@ -355,7 +322,7 @@ export default function CustomerBooking() {
       localStorage.getItem("access_token") ||
       localStorage.getItem("jwt");
     const customer_id =
-      (isLoggedIn &&
+      (loggedIn &&
         (localStorage.getItem("user_id") ||
           localStorage.getItem("id") ||
           localStorage.getItem("userId"))) ||
@@ -363,7 +330,7 @@ export default function CustomerBooking() {
 
     const payload = {
       staff_id: staffId,
-      starts_at: startsLocal.toLocaleString('sv-SE').replace(' ', 'T'), // naive local ISO (backend expects this)
+      starts_at: buildStartsAtUTC(selectedDate, selectedTime),
       date: selectedDate,
       time: selectedTime,
       duration: totalDuration,
@@ -441,7 +408,7 @@ export default function CustomerBooking() {
     setCardNumber("");
     setCardCvc("");
 
-    sendSMS(data).catch(() => {});
+    sendSMS(data).catch(() => { });
   };
 
   function getAvailableDates() {
@@ -633,9 +600,8 @@ export default function CustomerBooking() {
               key={hhmm}
               type="button"
               onClick={() => !disabled && setSelectedTime(hhmm)}
-              className={`time-pill align-self-center ${
-                selectedTime === hhmm ? "selected" : ""
-              } ${disabled ? "opacity-50 cursor-not-allowed" : ""}`}
+              className={`time-pill align-self-center ms-1 mb-1 ${selectedTime === hhmm ? "selected" : ""
+                } ${disabled ? "opacity-50 cursor-not-allowed" : ""}`}
               disabled={disabled}
               style={{
                 transition: "all .25s ease-in-out",
@@ -653,7 +619,7 @@ export default function CustomerBooking() {
       <div className="ms-3 mb-4">
         <input
           type="time"
-          step="1800"
+          step="900"
           min="09:00"
           max="18:30"
           value={selectedTime}
@@ -691,28 +657,28 @@ export default function CustomerBooking() {
           </label>
         </div>
 
-        <div className="grid md:grid-cols-4 gap-2 mb-3">
-          {[0, 5, 10, 15, 20].map((t) => (
-            <button
-              key={t}
-              type="button"
-              onClick={() => setTip(String(t))}
-              className={`time-pill ${Number(tip) === t ? "selected" : ""} ms-2`}
-              style={{ transition: "all .2s ease-in-out", borderStyle: "solid" }}
-            >
-              Tip {usd(t)}
-            </button>
-          ))}
-          <input
-            className="time-pill border align-self-center md:col-span-2 ms-2"
-            placeholder="Custom tip ($)"
-            value={tip}
-            onChange={(e) => setTip(e.target.value.replace(/[^\d.]/g, ""))}
-          />
-        </div>
-
         {paymentMethod === "card" && (
           <div className="grid md:grid-cols-2">
+            <div className="grid md:grid-cols-4 gap-2 mb-3">
+              {[0, 5, 10, 15, 20].map((t) => (
+                <button
+                  key={t}
+                  type="button"
+                  onClick={() => setTip(String(t))}
+                  className={`time-pill ${Number(tip) === t ? "selected" : ""} ms-2`}
+                  style={{ transition: "all .2s ease-in-out", borderStyle: "solid" }}
+                >
+                  Tip {usd(t)}
+                </button>
+              ))}
+              <input
+                className="time-pill border align-self-center md:col-span-2 ms-2"
+                placeholder="Custom tip ($)"
+                value={tip}
+                onChange={(e) => setTip(e.target.value.replace(/[^\d.]/g, ""))}
+              />
+            </div>
+
             <input
               className="time-pill border"
               placeholder="Name on card"
@@ -748,14 +714,15 @@ export default function CustomerBooking() {
       {/* ACCOUNT / CUSTOMER INFO */}
       {profileLoading && <div className="ms-3 mb-2 alert alert-info">Loading your profile…</div>}
       {profileError && <div className="ms-3 mb-2 alert alert-warning">{profileError}</div>}
-      {isLoggedIn && !profileLoading && !profileError && (
-        <div className="ms-3 mb-3 price-pill">
-          Using your account info ({customerInfo.firstName} {customerInfo.lastName},{" "}
-          {customerInfo.email}, {customerInfo.phone})
+      {loggedIn && !profileLoading && !profileError && (
+        <div className="ms-3 mb-3 p-3 price-pill">
+          Name: {customerInfo.firstName} {customerInfo.lastName} <br/>
+          Email: {customerInfo.email} <br/>
+          Phone: {customerInfo.phone}
         </div>
       )}
 
-      {!isLoggedIn && (
+      {!loggedIn && (
         <>
           <h3 className="text-lg auth-title mb-3 ms-3">Your Information</h3>
           <div className="grid md:grid-cols-2 gap-4 mb-3 ms-3">
@@ -768,7 +735,7 @@ export default function CustomerBooking() {
               }
             />
             <input
-              className="time-pill"
+              className="time-pill ms-2"
               placeholder="Last Name"
               value={customerInfo.lastName}
               onChange={(e) => setCustomerInfo((p) => ({ ...p, lastName: e.target.value }))}
@@ -782,7 +749,7 @@ export default function CustomerBooking() {
               onChange={(e) => setCustomerInfo((p) => ({ ...p, email: e.target.value }))}
             />
             <input
-              className="time-pill"
+              className="time-pill ms-2"
               placeholder="Phone (+1 xxx-xxx-xxxx)"
               value={customerInfo.phone}
               onChange={(e) => setCustomerInfo((p) => ({ ...p, phone: e.target.value }))}

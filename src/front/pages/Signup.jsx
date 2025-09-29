@@ -83,9 +83,9 @@ export const Signup = () => {
                         <Link to="/" className="btn btn-secondary me-2 text-decoration-none">
                             Cancel
                         </Link>
-                        <button type="submit" className="btn btn-gold ms-2 text-decoration-none">
+                        <Link to="/" type="submit" className="btn btn-gold ms-2 text-decoration-none">
                             Sign up!
-                        </button>
+                        </Link>
                     </div>
                     <p className="mt-3 text-center small">
                         Already have an account?{" "}

@@ -48,7 +48,7 @@ export const Navbar = () => {
 							aria-expanded="false"
 						>
 							{loggedIn ? (
-								<span>Account </span>
+								<span className="button-text">Account </span>
 							) : (
 								<span className="button-text">Login </span>
 							)}
