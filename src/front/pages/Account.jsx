@@ -1,25 +1,35 @@
-import { useState } from "react";
-import { useNavigate, Link } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { useAuth } from "../context/AuthContext";
 import InfoTab from "../components/AccountInfo";
 import UsersTab from "../components/AccountUsers";
 import HistoryTab from "../components/AccountHistory";
 
 export const Account = () => {
   const [active, setActive] = useState("info");
+  const { user } = useAuth();
+  const canViewUsers = user?.role === "Admin";
+
+  useEffect(() => {
+    if (active === "users" && !canViewUsers) setActive("info");
+  }, [active, canViewUsers]);
 
   return (
-    <div className="border border-0" style={{margin: "0% 10% 5% 10%"}}>
+    <div className="border border-0" style={{ margin: "0% 10% 5% 10%" }}>
       <ul className="nav nav-tabs">
         <li className="nav-item">
           <button className={`nav-link ${active === "info" && "active"}`} onClick={() => setActive("info")}>
             Info
           </button>
         </li>
-        <li className="nav-item">
-          <button className={`nav-link ${active === "users" && "active"}`} onClick={() => setActive("users")}>
-            Users
-          </button>
-        </li>
+
+        {canViewUsers && (
+          <li className="nav-item">
+            <button className={`nav-link ${active === "users" && "active"}`} onClick={() => setActive("users")}>
+              Users
+            </button>
+          </li>
+        )}
+
         <li className="nav-item">
           <button className={`nav-link ${active === "history" && "active"}`} onClick={() => setActive("history")}>
             History
@@ -29,12 +39,13 @@ export const Account = () => {
 
       <div className="mt-3">
         {active === "info" && <InfoTab />}
-        {active === "users" && <UsersTab />}
+        {active === "users" && canViewUsers && <UsersTab />}   {/* guard content */}
         {active === "history" && <HistoryTab />}
       </div>
     </div>
   );
 };
+
 
 
 // export const testsample = () => {
