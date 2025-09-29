@@ -1,36 +1,35 @@
 import { useState } from "react";
 import RoleModal from "./RoleModal";
+import EditUserModal from "./EditUserModal.jsx";
 
 export const UserTable = ({ props, refresh }) => {
-    const [isOpen, setIsOpen] = useState(false);
+    const [open, setOpen] = useState(false);
     const allRoles = ["Admin", "Staff", "Customer"];
-    const backendLink = import.meta.env.VITE_BACKEND_URL;
+    
+    const API_ROOT = String(import.meta.env.VITE_BACKEND_URL || "").replace(/\/+$/, "");
 
-    const handleSave = (updatedRole) => {
-        console.log("Saving role for user:", props.id, updatedRole);
+    const handleDelete = async () => {
+        const name = `${props.first} ${props.last}`.trim() || `#${props.id}`;
+        if (!window.confirm(`Are you sure you would like to delete ${name}? 
+        This cannot be undone.`)) return;
 
-        fetch(`${backendLink}/api/user/${props.id}/role`, {
-            method: "PUT",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ role: updatedRole }),
-        })
-            .then((res) => {
-                if (!res.ok) throw new Error("Failed to update role");
-                return res.json();
-            })
-            .then((data) => {
-                console.log("Updated user:", data);
-                setIsOpen(false);
-                if (typeof refresh === "function") refresh();
-            })
-            .catch((err) => {
-                console.error(err);
+        try {
+            const res = await fetch(`${API_ROOT}/api/user/${props.id}`, {
+                method: "DELETE",
             });
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            // re-fetch the tables after deletion
+            if (typeof refresh === "function") refresh();
+            alert(`User "${name}" was deleted successfully.`);
+        } catch (err) {
+            console.error(err);
+            alert("Failed to delete user. Please try again.");
+        }
     };
 
     return (
         <tbody>
-            
+
             <tr>
                 <th scope="row">{props.id}</th>
                 <td>{props.first}</td>
@@ -38,22 +37,24 @@ export const UserTable = ({ props, refresh }) => {
                 <td>{props.email}</td>
                 <td>{props.phone}</td>
                 <td>
-                    <button
-                        className="btn btn-secondary"
-                        type="button"
-                        onClick={() => setIsOpen(true)}
-                    >
-                        Edit Role
+                    <button className="btn btn-gold" onClick={() => setOpen(true)}>
+                        Edit User
                     </button>
-                    <RoleModal
-                        isOpen={isOpen}
-                        onClose={() => setIsOpen(false)}
-                        onSave={handleSave}
-                        user={props}
-                        roles={allRoles}
-                    />
+                    <button
+                        className="btn btn-danger ms-2"
+                        onClick={handleDelete}
+                        title="Delete this user"
+                    >
+                        X
+                    </button>
                 </td>
             </tr>
+            <EditUserModal
+                open={open}
+                onClose={() => setOpen(false)}
+                user={props}
+                onSaved={refresh}
+            />
         </tbody>
     );
 };

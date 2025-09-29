@@ -20,6 +20,8 @@ export default function AddUserModal({
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
   const [password, setPassword] = useState("");
+  const [bio, setBio] = useState("");
+  const [photoUrl, setPhotoUrl] = useState("");
 
   useEffect(() => {
     if (open) setRole(defaultRole || "Customer");
@@ -40,12 +42,14 @@ export default function AddUserModal({
 
   const save = async () => {
     const payload = {
-      fname: first.trim(),
-      lname: last.trim(),
+      first: first.trim(),
+      last: last.trim(),
       email: email.trim(),
       phone: phone.trim(),
       role,
-      password: password || "-", // backend can ignore / reset
+      password: password || "!", // backend can ignore / reset
+      bio: bio.trim() || null,
+      photo_url: photoUrl.trim() || null, 
     };
 
     const res = await fetch(`${API_ROOT}/api/users`, {
@@ -53,21 +57,26 @@ export default function AddUserModal({
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
     });
+    const data = await res.json().catch(() => ({}));
 
     if (!res.ok) {
-      alert("Failed to create user");
+      alert(data?.msg ? `Failed to create user: ${data.msg}` : "Failed to create user");
       return;
     }
+
+    // ✅ Success alert
+    alert(`User "${data.first} ${data.last}" was added successfully.`);
 
     onSaved?.();
     onClose?.();
 
-    // clear for next open
     setFirst("");
     setLast("");
     setEmail("");
     setPhone("");
     setPassword("");
+    setBio("");
+    setPhotoUrl("");
   };
 
   const modalUI = (
@@ -150,10 +159,24 @@ export default function AddUserModal({
               </div>
 
               <input
-                className="form-control"
+                className="form-control mb-3"
                 placeholder="Temporary password (optional)"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
+              />
+
+              <textarea
+                className="form-control mb-3"
+                placeholder="Bio (Staff)"
+                value={bio}
+                onChange={(e) => setBio(e.target.value)}
+              />
+
+              <input
+                className="form-control mb-3"
+                placeholder="PhotoUrl (Staff)"
+                value={photoUrl}
+                onChange={(e) => setPhotoUrl(e.target.value)}
               />
             </div>
 
@@ -161,7 +184,7 @@ export default function AddUserModal({
               <button className="btn btn-outline-secondary" onClick={onClose}>
                 Cancel
               </button>
-              <button className="btn btn-primary" onClick={save}>
+              <button className="btn btn-gold" onClick={save}>
                 Save
               </button>
             </div>

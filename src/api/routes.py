@@ -14,14 +14,9 @@ CORS(api)
 LOCAL_TZ = ZoneInfo(os.getenv("LOCAL_TZ", "America/New_York"))
 
 def to_local_display(dt):
-    # Ensure we have an aware datetime
     if dt.tzinfo is None:
-        # your DB stores naive (UTC) — mark it as UTC
         dt = dt.replace(tzinfo=timezone.utc)
-    # convert to the configured local timezone
     local_dt = dt.astimezone(LOCAL_TZ)
-    # format however you want it to look in the UI
-    # e.g., "2025-09-30 09:00 AM"
     return local_dt.strftime("%Y-%m-%d %I:%M %p")
 
 # ----------------- Time helpers (all timezone-aware) -----------------
@@ -108,14 +103,19 @@ def create_user():
 
     if User.query.filter_by(email=data["email"].strip().lower()).first():
         return jsonify({"msg":"Email already exists"}), 409
+    
+    first = (data.get("first") or data.get("fname") or "").strip()
+    last  = (data.get("last")  or data.get("lname") or "").strip()
 
     u = User(
-        fname=data["first"].strip(),
-        lname=data["last"].strip(),
+        fname=first,
+        lname=last,
         email=data["email"].strip().lower(),
         phone=(data.get("phone") or "").strip(),
         role=data["role"],
-        password="!"  # or generate/handle properly
+        password="!",  # or generate/handle properly
+        bio=(data.get("bio") or "").strip() or None,
+        photo_url=(data.get("photo_url") or data.get("photoUrl") or "").strip() or None,
     )
     db.session.add(u)
     db.session.commit()
@@ -170,7 +170,6 @@ def create_staff():
 
 # ---- ROLES ----
 
-
 @api.route("/token", methods=["POST"])
 def create_token():
     email = request.json.get("email", None)
@@ -187,21 +186,6 @@ def create_token():
     # Temporarily changed (identity=user.email) to (identity=user.id)
     access_token = create_access_token(identity=user.id)
     return jsonify({"token": access_token, "user_id": user.id})
-
-# Get currently logged in user (Protected)
-# @api.route("/me", methods=["GET"])
-# @jwt_required(optional=True)
-# def me():
-#    user_id = get_jwt_identity()
-#    user = User.query.get(user_id)
-#    if not user:
-#        return jsonify({"msg": "User not found"}), 404
-
-#    return jsonify({
-#        "id": user.id,
-#        "first": user.fname,
-#        "email": user.email
-#    })
 
 
 @api.route("/me/<int:user_id>", methods=["GET"])
@@ -223,98 +207,59 @@ def me(user_id):
 @api.route("/admins", methods=["GET"])
 def get_admins():
     admins = User.query.filter(User.role == "Admin").all()
-    if not admins:
-        return jsonify({"msg": "No admins found"}), 404
-
-    return jsonify([
-        {
-            "id": admin.id,
-            "first": admin.fname,
-            "last": admin.lname,
-            "email": admin.email,
-            "phone": admin.phone,
-            "role": admin.role
-        }
-        for admin in admins
-    ])
+    return jsonify([a.serialize() for a in admins]), 200
 
 
 @api.route("/customers", methods=["GET"])
 def get_customers():
     customers = User.query.filter(User.role == "Customer").all()
-    if not customers:
-        return jsonify({"msg": "No customers found"}), 404
-
-    return jsonify([
-        {
-            "id": customer.id,
-            "first": customer.fname,
-            "last": customer.lname,
-            "email": customer.email,
-            "phone": customer.phone,
-            "role": customer.role
-        }
-        for customer in customers
-    ])
-
-
-@api.route("/user/<int:user_id>/role", methods=["PUT"])
-def update_user_role(user_id):
-    data = request.get_json(silent=True) or {}
-    new_role = data.get("role")
-
-    ALLOWED = {"Admin", "Staff", "Customer"}
-    if not isinstance(new_role, str) or new_role not in ALLOWED:
-        return jsonify({"msg": "Invalid role"}), 400
-
-    user = User.query.get(user_id)
-    if not user:
-        return jsonify({"msg": "User not found"}), 404
-
-    user.role = new_role
-    db.session.commit()
-
-    return jsonify({
-        "id": user.id,
-        "first": user.fname,
-        "last": user.lname,
-        "email": user.email,
-        "phone": user.phone,
-        "role": user.role
-    }), 200
+    return jsonify([c.serialize() for c in customers]), 200
 
 
 @api.route("/user/<int:user_id>", methods=["PUT"])
-def update_user_info(user_id):
-    data = request.get_json()
-
-    first = data.get("first")
-    last = data.get("last")
-    phone = data.get("phone")
-    email = data.get("email")
-
-    if not all([first, last, phone, email]):
-        return jsonify({"msg": "Error: All fields required"}), 400
-
+def update_user(user_id: int):
+    data = request.get_json(silent=True) or {}
     user = User.query.get(user_id)
     if not user:
         return jsonify({"msg": "User not found"}), 404
 
-    user.fname = first
-    user.lname = last
-    user.phone = phone
-    user.email = email
+    # map JSON keys -> model columns
+    fields = {
+        "first": "fname",
+        "last": "lname",
+        "email": "email",
+        "phone": "phone",
+        "role": "role",
+        "bio": "bio",
+        "photo_Url": "photo_url",
+        "booking_url": "booking_url",
+    }
+
+    for key, attr in fields.items():
+        if key in data and data[key] is not None:
+            val = (data[key] or "").strip()
+            if key == "email":
+                val = val.lower()
+            setattr(user, attr, val)
 
     db.session.commit()
+    return jsonify(user.serialize()), 200
 
-    return jsonify({
-        "id": user.id,
-        "first": user.fname,
-        "last": user.lname,
-        "email": user.email,
-        "phone": user.phone,
-        "role": user.role
-    }), 200
+@api.route("/user/<int:user_id>", methods=["DELETE"])
+def delete_user(user_id: int):
+    user = User.query.get(user_id)
+    if not user:
+        return jsonify({"msg": "User not found"}), 404
+
+    # Optional: delete related appointments so we don't leave orphans
+    # (keep this if you don't have ON DELETE CASCADE at the DB level)
+    Appointment.query.filter(
+        (Appointment.staff_id == user_id) | (Appointment.customer_id == user_id)
+    ).delete(synchronize_session=False)
+
+    db.session.delete(user)
+    db.session.commit()
+    return jsonify({"ok": True}), 200
 
 # ---- Appointments API ----
 
@@ -458,23 +403,3 @@ def delete_appointment(appt_id: int):
 def _ensure_tables():
     db.create_all()
 
-# @api.route('/staff', methods=['POST'])
-# def add_staff():
-#     data = request.get_json()
-
-#     # Validate required fields
-#     if not data.get("name") or not data.get("role"):
-#         return jsonify({"error": "Name and role are required"}), 400
-
-#     new_staff = Staff(
-#         name=data.get("name"),
-#         role=data.get("role"),
-#         bio=data.get("bio", ""),
-#         photo_url=data.get("photoUrl", ""),
-#         booking_url=data.get("bookingUrl", "#")
-#     )
-
-#     db.session.add(new_staff)
-#     db.session.commit()
-
-#     return jsonify(new_staff.serialize()), 201
