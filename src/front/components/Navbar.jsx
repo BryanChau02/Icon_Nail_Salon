@@ -1,15 +1,27 @@
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import SalonLogo from "../assets/img/SalonLogo.png";
 
 
 export const Navbar = () => {
+	const navigate = useNavigate();
 
-	{/* Logout functionality; Please do not remove // Deprecated. */ }
-	{/* function logout() {
-		localStorage.removeItem("jwt-token");
-		window.location.href = "/login";
-	} */}
+	const handleLogout = async () => {
+		try {
+			if (typeof logout === "function") {
+				await logout();
+			} else {
+				localStorage.removeItem("token");
+				localStorage.removeItem("access_token");
+				localStorage.removeItem("jwt");
+				localStorage.removeItem("user_id");
+				localStorage.removeItem("id");
+				localStorage.removeItem("userId");
+			}
+		} finally {
+			navigate("/", { replace: true });
+		}
+	};
 	const { loggedIn, logout } = useAuth();
 
 	return (
@@ -57,12 +69,13 @@ export const Navbar = () => {
 							{loggedIn ? (
 								<>
 									<li><a className="dropdown-item text-warning nav-drop button-text" href="/account">My Info</a></li>
-									<li><button className="dropdown-item text-light nav-drop button-text" onClick={logout}>Logout</button></li>
+									<li><button className="dropdown-item text-light nav-drop button-text" onClick={handleLogout}>
+										Logout
+									</button></li>
 								</>
 							) : (
 								<>
 									<li><a className="dropdown-item text-light nav-drop button-text" href="/login">Login</a></li>
-									<li><a className="dropdown-item text-light nav-drop button-text" href="/login">Staff Login</a></li>
 									<li><a className="dropdown-item text-light nav-drop button-text" href="/signup">Sign Up</a></li>
 								</>
 							)}

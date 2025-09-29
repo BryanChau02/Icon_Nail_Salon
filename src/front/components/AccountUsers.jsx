@@ -1,26 +1,25 @@
 import { useEffect, useState } from "react";
 import UserTable from "./AccountUsersTables";
 import useGlobalReducer from "../hooks/useGlobalReducer.jsx";
+import AddUserModal from "./AddUserModal.jsx";
 
 export const UsersTab = () => {
     {/* gets for admins, employees, and customers */ }
     const [admins, setAdmins] = useState([]);
     const [staff, setStaff] = useState([]);
-    const [employees, setEmployees] = useState([]);
     const [customers, setCustomers] = useState([]);
     const backendLink = import.meta.env.VITE_BACKEND_URL
 
     const [loadingAdmins, setLoadingAdmins] = useState(true);
     const [loadingStaff, setLoadingStaff] = useState(true);
     const [loadingCustomers, setLoadingCustomers] = useState(true);
+    const [addRole, setAddRole] = useState(null);
 
     const refreshAll = () => {
         getAdmins();
         getStaff();
         getCustomers();
     };
-
-
 
     const getAdmins = () => {
         setLoadingAdmins(true);
@@ -49,10 +48,8 @@ export const UsersTab = () => {
             .finally(() => setLoadingCustomers(false));
     };
 
-
-
-    useEffect(() => { // Runs depending on the dependency array at the end. If empty, runs once on app start, and not when changing pages (to another .jsx file)
-        getAdmins(); //runs getAdmins function on first load
+    useEffect(() => {
+        getAdmins();
         getStaff();
         getCustomers();
     }, [])
@@ -61,7 +58,15 @@ export const UsersTab = () => {
         <div>
             <div className="container">
                 <div>
-                    <h4>Admins</h4>
+                    <h4 className="d-flex align-items-center">
+                        Admins
+                        <button
+                            className="btn btn-sm btn-secondary ms-2"
+                            onClick={() => setAddRole("Admin")}
+                        >
+                            + Add
+                        </button>
+                    </h4>
                     {loadingAdmins ? (
                         <div className="d-flex align-items-center justify-content-center">
                             <div className="loader" />
@@ -86,7 +91,15 @@ export const UsersTab = () => {
                         </table>)}
                 </div>
                 <div className="mt-5">
-                    <h4>Employees</h4>
+                    <h4 className="d-flex align-items-center my-5">
+                        Staff
+                        <button
+                            className="btn btn-sm btn-secondary ms-2"
+                            onClick={() => setAddRole("Staff")}
+                        >
+                            + Add
+                        </button>
+                    </h4>
                     {loadingStaff ? (
                         <div className="d-flex align-items-center justify-content-center">
                             <div className="loader" />
@@ -111,7 +124,15 @@ export const UsersTab = () => {
                         </table>)}
                 </div>
                 <div className="my-5">
-                    <h4>Customers</h4>
+                    <h4 className="d-flex align-items-center my-5">
+                        Customers
+                        <button
+                            className="btn btn-sm btn-secondary ms-2"
+                            onClick={() => setAddRole("Customer")}
+                        >
+                            + Add
+                        </button>
+                    </h4>
                     {loadingCustomers ? (
                         <div className="d-flex align-items-center justify-content-center">
                             <div className="loader" />
@@ -135,6 +156,17 @@ export const UsersTab = () => {
                             }
                         </table>)}
                 </div>
+                <AddUserModal
+                    open={!!addRole}
+                    defaultRole={addRole || "Customer"}
+                    onClose={() => setAddRole(null)}
+                    onSaved={() => {
+                        if (addRole === "Admin") getAdmins();
+                        else if (addRole === "Staff") getStaff();
+                        else getCustomers();
+                        setAddRole(null);
+                    }}
+                />
             </div>
         </div>
     )
