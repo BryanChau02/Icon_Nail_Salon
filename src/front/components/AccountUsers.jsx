@@ -61,10 +61,10 @@ export const UsersTab = () => {
                     <h4 className="d-flex align-items-center">
                         Admins
                         <button
-                            className="btn btn-sm btn-secondary ms-2"
+                            className="btn btn-sm btn-gold ms-2"
                             onClick={() => setAddRole("Admin")}
                         >
-                            + Add
+                            +
                         </button>
                     </h4>
                     {loadingAdmins ? (
@@ -94,10 +94,10 @@ export const UsersTab = () => {
                     <h4 className="d-flex align-items-center my-5">
                         Staff
                         <button
-                            className="btn btn-sm btn-secondary ms-2"
+                            className="btn btn-sm btn-gold ms-2"
                             onClick={() => setAddRole("Staff")}
                         >
-                            + Add
+                            +
                         </button>
                     </h4>
                     {loadingStaff ? (
@@ -127,10 +127,10 @@ export const UsersTab = () => {
                     <h4 className="d-flex align-items-center my-5">
                         Customers
                         <button
-                            className="btn btn-sm btn-secondary ms-2"
+                            className="btn btn-sm btn-gold ms-2"
                             onClick={() => setAddRole("Customer")}
                         >
-                            + Add
+                            +
                         </button>
                     </h4>
                     {loadingCustomers ? (

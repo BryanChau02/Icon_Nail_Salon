@@ -36,6 +36,7 @@ class User(db.Model):
             "photoUrl": self.photo_url or "",
             "bookingUrl": self.booking_url or "",
             # do not serialize the password, its a security breach
+            "photoUrl": self.photo_url or "",
         }
 
 
