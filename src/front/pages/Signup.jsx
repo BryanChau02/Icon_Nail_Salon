@@ -29,15 +29,20 @@ export const Signup = () => {
                 headers: { 'Content-Type': 'application/json' }
             });
 
-            if (!res.ok) throw new Error(res.statusText);
+            if (!res.ok) {
+                let errData = null;
+                try { errData = await res.json(); } catch { }
+                console.log("Signup failed:", errData);
+                alert(errData?.msg || `Signup failed (${res.status})`);
+                return;
+            }
 
-            const response = await res.json();
-            console.log('Success:', response);
-            console.log("Navigating now")
-            navigate("/");
-
+            console.log("Signup success");
+            navigate("/", { replace: true });
+            alert("Successful Sign Up!")
         } catch (error) {
             console.error(error);
+            alert("There is already an account with this email.");
         }
     };
 
@@ -83,9 +88,10 @@ export const Signup = () => {
                         <Link to="/" className="btn btn-secondary me-2 text-decoration-none">
                             Cancel
                         </Link>
-                        <Link to="/" type="submit" className="btn btn-gold ms-2 text-decoration-none">
+
+                        <button type="submit" className="btn btn-gold ms-2">
                             Sign up!
-                        </Link>
+                        </button>
                     </div>
                     <p className="mt-3 text-center small">
                         Already have an account?{" "}

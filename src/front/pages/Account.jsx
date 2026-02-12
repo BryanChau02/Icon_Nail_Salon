@@ -43,10 +43,9 @@ export const Account = () => {
         {active === "history" && <HistoryTab />}
       </div>
     </div>
+    
   );
 };
-
-
 
 // export const testsample = () => {
 

@@ -30,8 +30,8 @@ export const Home = () => {
 					<h1 className="display-4 text-white text-shadow mb-2">Luxury Nail Care</h1>
 					<p className="lead text-white-50 mb-4">Experience the ultimate in pampering and style</p>
 					<div className="container-fluid">
-					<a href="#about" className="btn btn-gold btn-lg me-3">About Us</a>
-					<a href="#find-us" className="btn btn-gold btn-lg">Location</a>
+						<a href="#about" className="btn btn-gold btn-lg me-3">About Us</a>
+						<a href="#find-us" className="btn btn-gold btn-lg">Location</a>
 					</div>
 				</div>
 			</section>
@@ -153,30 +153,38 @@ export const Home = () => {
 
 									<p className="mb-2">
 										<i className="fa-solid fa-location-dot me-2 text-gold"></i>
-										<strong>Temporary address:</strong><br />
-										1634 N Federal Hwy, Fort Lauderdale, FL 33305
+										<strong>Located in: Windsor Square Commons</strong><br />
+										4684 Coral Ridge Dr, Coral Springs, FL 33076
 									</p>
-									<p className="text-muted small mb-3">
-										This is our temporary location while we finish our new space nearby.
-										Parking available behind the building.
-									</p>
+									{/* <p className="text-muted small mb-3">
+										Hours: <br/>
+										Monday: 9:00 AM - 7:00 PM <br/>
+										Tuesday: CLOSED <br/>
+										Wednesday - Saturday: 9:00 AM - 7:00 PM <br/>
+										Sunday: 10:00 AM - 5:00 PM
+									</p> */}
 
 									<ul className="list-unstyled mb-4">
 										<li className="mb-1">
 											<i className="fa-regular fa-clock me-2 text-gold"></i>
-											Mon–Sat: 10:00 AM – 7:00 PM
+											Monday: 9:00 AM - 7:00 PM
+											<div className="ms-4">
+												<div>Tuesday: CLOSED</div>
+												<div>Wednesday - Saturday: 9:00 AM - 7:00 PM</div>
+												<div>Sunday: 10:00 AM - 5:00 PM</div>
+											</div>
 										</li>
 										<li>
 											<i className="fa-solid fa-phone me-2 text-gold"></i>
-											<a href="tel:+19545550123" className="text-decoration-none text-dark">
-												(954) 555-0123
+											<a href="tel:+19543469788" className="text-decoration-none text-dark">
+												(954) 346-9788
 											</a>
 										</li>
 									</ul>
 
 									<a
 										className="btn btn-gold"
-										href="https://www.google.com/maps/dir/?api=1&destination=1634+N+Federal+Hwy,+Fort+Lauderdale,+FL+33305"
+										href="https://www.google.com/maps/dir/?api=1&destination=Eagle+Nail+Spa,+4684+Coral+Ridge+Dr,+Coral+Springs,+FL+33076"
 										target="_blank"
 										rel="noreferrer"
 									>
@@ -191,7 +199,7 @@ export const Home = () => {
 							<div className="ratio ratio-16x9 rounded shadow-sm overflow-hidden">
 								<iframe
 									title="Map to Salon"
-									src="https://www.google.com/maps?q=1634+N+Federal+Hwy,+Fort+Lauderdale,+FL+33305&output=embed"
+									src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3577.1660364559507!2d-80.2880125139952!3d26.288716927402426!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x88d91005fb5929d3%3A0x32ade908fb0b9fd5!2sEagle%20Nail%20Spa!5e0!3m2!1sen!2sus!4v1770870733303!5m2!1sen!2sus"
 									loading="lazy"
 									referrerPolicy="no-referrer-when-downgrade"
 									className="border-0"
